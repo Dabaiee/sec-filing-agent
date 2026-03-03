@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RawFiling(BaseModel):
     """Raw filing content fetched from SEC EDGAR."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     ticker: str = Field(description="Stock ticker symbol")
     cik: str = Field(description="Central Index Key")
@@ -18,6 +21,7 @@ class RawFiling(BaseModel):
     filing_date: date = Field(description="Date the filing was submitted")
     document_url: str = Field(description="URL of the primary document")
     content: str = Field(description="Raw text content of the filing")
+    filing_obj: Any = Field(default=None, description="Original edgartools Filing object")
 
 
 class FilingMetadata(BaseModel):
