@@ -210,7 +210,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown(
         "**Powered by [Claude](https://anthropic.com)**  \n"
-        "Built with [sec-filing-agent](https://github.com/your-username/sec-filing-agent)"
+        "Built with [sec-filing-agent](https://github.com/Dabaiee/sec-filing-agent)"
     )
 
 # Input row

@@ -4,13 +4,13 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sec-filing-agent"
-version = "0.1.0"
+version = "0.2.0"
 description = "AI-powered SEC filing analysis agent using multi-stage LLM pipelines"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
-    { name = "SEC Filing Agent Contributors" },
+    { name = "Dabaiee" },
 ]
 keywords = ["sec", "edgar", "filing", "analysis", "llm", "ai", "finance"]
 classifiers = [
@@ -49,11 +49,11 @@ web = [
 sec-agent = "sec_filing_agent.cli:app"
 
 [project.urls]
-Homepage = "https://github.com/your-username/sec-filing-agent"
-Repository = "https://github.com/your-username/sec-filing-agent"
-Documentation = "https://github.com/your-username/sec-filing-agent#readme"
-Issues = "https://github.com/your-username/sec-filing-agent/issues"
-Changelog = "https://github.com/your-username/sec-filing-agent/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/Dabaiee/sec-filing-agent"
+Repository = "https://github.com/Dabaiee/sec-filing-agent"
+Documentation = "https://github.com/Dabaiee/sec-filing-agent#readme"
+Issues = "https://github.com/Dabaiee/sec-filing-agent/issues"
+Changelog = "https://github.com/Dabaiee/sec-filing-agent/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sec_filing_agent"]

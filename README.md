@@ -40,7 +40,7 @@ $ sec-agent analyze AAPL
 
 [![PyPI](https://img.shields.io/pypi/v/sec-filing-agent.svg)](https://pypi.org/project/sec-filing-agent/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![CI](https://github.com/your-username/sec-filing-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/sec-filing-agent/actions/workflows/ci.yml)
+[![CI](https://github.com/Dabaiee/sec-filing-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Dabaiee/sec-filing-agent/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 ---
@@ -243,7 +243,7 @@ Each analyzer uses structured output (JSON mode) with Pydantic validation. If va
 
 ```bash
 # Clone and install
-git clone https://github.com/your-username/sec-filing-agent.git
+git clone https://github.com/Dabaiee/sec-filing-agent.git
 cd sec-filing-agent
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
