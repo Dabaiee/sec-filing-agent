@@ -16,6 +16,8 @@ app = typer.Typer(
     help="SEC Filing Intelligence Agent — AI-powered SEC filing analysis",
     add_completion=False,
 )
+watch_app = typer.Typer(help="Watchlist — monitor tickers for new filings")
+app.add_typer(watch_app, name="watch")
 console = Console()
 
 
@@ -235,6 +237,61 @@ def compare(
             render_comparison_report(report)
 
     asyncio.run(_run())
+
+
+@watch_app.command("add")
+def watch_add(
+    tickers: list[str] = typer.Argument(help="Ticker symbols to add"),
+) -> None:
+    """Add tickers to the watchlist."""
+    from sec_filing_agent.watch.watchlist import Watchlist
+    wl = Watchlist()
+    wl.add(tickers)
+
+
+@watch_app.command("remove")
+def watch_remove(
+    tickers: list[str] = typer.Argument(help="Ticker symbols to remove"),
+) -> None:
+    """Remove tickers from the watchlist."""
+    from sec_filing_agent.watch.watchlist import Watchlist
+    wl = Watchlist()
+    wl.remove(tickers)
+
+
+@watch_app.command("list")
+def watch_list() -> None:
+    """List all watched tickers."""
+    from sec_filing_agent.watch.watchlist import Watchlist
+    wl = Watchlist()
+    wl.list()
+
+
+@watch_app.command("start")
+def watch_start(
+    interval: int = typer.Option(60, "--interval", "-i", help="Check interval in minutes"),
+    webhook: str | None = typer.Option(None, "--webhook", "-w", help="Webhook URL for alerts"),
+) -> None:
+    """Start monitoring for new filings."""
+    from sec_filing_agent.watch.monitor import Monitor
+    monitor = Monitor(interval_minutes=interval, webhook_url=webhook)
+    asyncio.run(monitor.run_loop())
+
+
+@watch_app.command("check")
+def watch_check() -> None:
+    """Check all watched tickers for new filings once."""
+    from sec_filing_agent.watch.monitor import Monitor
+    monitor = Monitor()
+    asyncio.run(monitor.check_all())
+
+
+@watch_app.command("report")
+def watch_report() -> None:
+    """Show the latest analysis for all watched tickers."""
+    from sec_filing_agent.watch.monitor import Monitor
+    monitor = Monitor()
+    monitor.generate_report()
 
 
 @app.command()
