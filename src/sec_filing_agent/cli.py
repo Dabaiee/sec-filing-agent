@@ -166,6 +166,33 @@ def analyze(
 
 
 @app.command()
+def trends(
+    ticker: str = typer.Argument(help="Stock ticker symbol (e.g., AAPL)"),
+    years: int = typer.Option(5, "--years", "-y", help="Number of years of data"),
+    output: str = typer.Option(
+        "terminal", "--output", "-o", help="Output format: terminal, json"
+    ),
+) -> None:
+    """Show multi-year financial trends using XBRL data."""
+    async def _run() -> None:
+        from sec_filing_agent.trends import analyze_trends
+        from sec_filing_agent.ui.trends import render_trend_report
+
+        try:
+            report = await analyze_trends(ticker=ticker, years=years)
+        except Exception as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(code=1) from e
+
+        if output == "json":
+            console.print(report.model_dump_json(indent=2))
+        else:
+            render_trend_report(report)
+
+    asyncio.run(_run())
+
+
+@app.command()
 def diff(
     ticker: str = typer.Argument(help="Stock ticker symbol (e.g., AAPL)"),
     filing_type: str = typer.Option(
