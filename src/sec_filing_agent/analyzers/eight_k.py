@@ -33,7 +33,11 @@ class EightKFinancialsResponse(BaseModel):
 
 
 class EightKAnalyzer(BaseAnalyzer):
-    """Analyzer for 8-K current report filings."""
+    """Analyzer for 8-K current report filings.
+
+    8-K filings are event-driven, so XBRL data is typically not available.
+    Uses LLM for both event analysis and financial extraction.
+    """
 
     async def analyze(
         self,

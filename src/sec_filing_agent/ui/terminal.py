@@ -36,7 +36,10 @@ class PipelineUI:
 
     def stage_start(self, stage_name: str, model: str) -> None:
         """Called when a pipeline stage begins."""
-        model_short = model.split("-")[1] if "-" in model else model
+        if model == "structured":
+            model_short = "structured — no LLM"
+        else:
+            model_short = model.split("-")[1] if "-" in model else model
         self._stages.append({"name": stage_name, "model": model_short, "done": False})
         console.print(f"  [yellow]◐[/yellow] {stage_name}...  [dim][{model_short}][/dim]")
 
