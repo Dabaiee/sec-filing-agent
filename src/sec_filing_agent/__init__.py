@@ -3,8 +3,28 @@
 from sec_filing_agent.models.analysis import AnalysisReport
 from sec_filing_agent.models.filing import RawFiling
 
-__all__ = ["analyze", "fetch_filing", "AnalysisReport", "RawFiling"]
-__version__ = "0.1.0"
+__all__ = [
+    "Agent",
+    "AnalysisReport",
+    "RawFiling",
+    "analyze",
+    "fetch_filing",
+]
+__version__ = "0.2.0"
+
+
+def Agent(model: str | None = None, api_key: str | None = None):
+    """Create an Agent instance for programmatic SEC filing analysis.
+
+    Args:
+        model: Optional model override (e.g., "claude-sonnet-4-20250514").
+        api_key: Optional Anthropic API key. Uses ANTHROPIC_API_KEY env var if not set.
+
+    Returns:
+        Agent instance with analyze, analyze_batch, diff, compare methods.
+    """
+    from sec_filing_agent.agent import Agent as _Agent
+    return _Agent(model=model, api_key=api_key)
 
 
 async def analyze(ticker: str, filing_type: str | None = None, output_format: str = "terminal") -> AnalysisReport:
