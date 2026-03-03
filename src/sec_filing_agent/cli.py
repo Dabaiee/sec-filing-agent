@@ -166,6 +166,33 @@ def analyze(
 
 
 @app.command()
+def sector(
+    ticker: str = typer.Argument(help="Stock ticker symbol (e.g., AAPL)"),
+    peers: list[str] | None = typer.Option(None, "--peers", "-p", help="Peer ticker symbols"),
+    output: str = typer.Option(
+        "terminal", "--output", "-o", help="Output format: terminal, json"
+    ),
+) -> None:
+    """Compare a company against sector peers."""
+    async def _run() -> None:
+        from sec_filing_agent.sector import analyze_sector
+        from sec_filing_agent.ui.sector import render_sector_report
+
+        try:
+            report = await analyze_sector(ticker=ticker, peers=peers)
+        except Exception as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(code=1) from e
+
+        if output == "json":
+            console.print(report.model_dump_json(indent=2))
+        else:
+            render_sector_report(report)
+
+    asyncio.run(_run())
+
+
+@app.command()
 def trends(
     ticker: str = typer.Argument(help="Stock ticker symbol (e.g., AAPL)"),
     years: int = typer.Option(5, "--years", "-y", help="Number of years of data"),
