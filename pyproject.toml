@@ -41,6 +41,9 @@ dev = [
 openai = [
     "openai>=1.0.0",
 ]
+web = [
+    "streamlit>=1.30.0",
+]
 
 [project.scripts]
 sec-agent = "sec_filing_agent.cli:app"
