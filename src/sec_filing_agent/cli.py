@@ -164,6 +164,80 @@ def analyze(
 
 
 @app.command()
+def diff(
+    ticker: str = typer.Argument(help="Stock ticker symbol (e.g., AAPL)"),
+    filing_type: str = typer.Option(
+        "10-K", "--filing-type", "-t", help="Filing type: 10-K, 10-Q, 8-K"
+    ),
+    from_date: str = typer.Option(
+        ..., "--from", "-f", help="Earlier filing date hint (e.g., '2023')"
+    ),
+    to_date: str = typer.Option(
+        ..., "--to", help="Later filing date hint (e.g., '2024')"
+    ),
+    output: str = typer.Option(
+        "terminal", "--output", "-o", help="Output format: terminal, json"
+    ),
+) -> None:
+    """Compare a company's filings across time periods."""
+    async def _run() -> None:
+        from sec_filing_agent.diff.analyzer import diff_filings
+        from sec_filing_agent.diff.ui import render_diff_report
+
+        try:
+            report = await diff_filings(
+                ticker=ticker,
+                filing_type=filing_type,
+                from_hint=from_date,
+                to_hint=to_date,
+            )
+        except Exception as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(code=1) from e
+
+        if output == "json":
+            console.print(report.model_dump_json(indent=2))
+        else:
+            render_diff_report(report)
+
+    asyncio.run(_run())
+
+
+@app.command()
+def compare(
+    ticker_a: str = typer.Argument(help="First ticker symbol (e.g., AAPL)"),
+    ticker_b: str = typer.Argument(help="Second ticker symbol (e.g., MSFT)"),
+    filing_type: str = typer.Option(
+        "10-K", "--filing-type", "-t", help="Filing type: 10-K, 10-Q, 8-K"
+    ),
+    output: str = typer.Option(
+        "terminal", "--output", "-o", help="Output format: terminal, json"
+    ),
+) -> None:
+    """Compare filings of two different companies."""
+    async def _run() -> None:
+        from sec_filing_agent.diff.analyzer import compare_companies
+        from sec_filing_agent.diff.ui import render_comparison_report
+
+        try:
+            report = await compare_companies(
+                ticker_a=ticker_a,
+                ticker_b=ticker_b,
+                filing_type=filing_type,
+            )
+        except Exception as e:
+            console.print(f"[red]Error:[/red] {e}")
+            raise typer.Exit(code=1) from e
+
+        if output == "json":
+            console.print(report.model_dump_json(indent=2))
+        else:
+            render_comparison_report(report)
+
+    asyncio.run(_run())
+
+
+@app.command()
 def version() -> None:
     """Show the version."""
     from sec_filing_agent import __version__

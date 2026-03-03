@@ -38,6 +38,8 @@ TASK_COMPLEXITY: dict[str, TaskComplexity] = {
     "ten_k_analysis": TaskComplexity.HIGH,
     "ten_q_analysis": TaskComplexity.HIGH,
     "eight_k_analysis": TaskComplexity.HIGH,
+    "filing_diff_analysis": TaskComplexity.HIGH,
+    "company_comparison_analysis": TaskComplexity.HIGH,
     # LOW complexity: classification, extraction, summarization
     "filing_classification": TaskComplexity.LOW,
     "entity_extraction": TaskComplexity.LOW,
