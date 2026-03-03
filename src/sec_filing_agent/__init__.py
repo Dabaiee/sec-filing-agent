@@ -10,7 +10,7 @@ __all__ = [
     "analyze",
     "fetch_filing",
 ]
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 
 def Agent(model: str | None = None, api_key: str | None = None):
