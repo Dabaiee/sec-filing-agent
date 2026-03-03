@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from rich.console import Console
 from rich.table import Table
 
@@ -34,7 +36,7 @@ class Watchlist:
             else:
                 console.print(f"  [dim]{ticker.upper()} not in watchlist[/dim]")
 
-    def list(self) -> list[dict]:
+    def list(self) -> list[dict[str, Any]]:
         """List all watched tickers with their status."""
         tickers = self.store.list_tickers()
         if not tickers:

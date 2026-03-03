@@ -71,7 +71,8 @@ class LLMClient:
             messages=[{"role": "user", "content": prompt}],
         )
 
-        response_text = message.content[0].text
+        first_block = message.content[0]
+        response_text = first_block.text if hasattr(first_block, "text") else str(first_block)
         usage = StageUsage(
             stage=stage_label,
             model=model_config.model,
@@ -165,16 +166,3 @@ def _parse_json_response(text: str, model: type[T]) -> T:
     return model.model_validate(data)
 
 
-def _extract_json_from_text(text: str) -> str:
-    """Try to extract JSON from text that may contain non-JSON content."""
-    # Find the first { and last }
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        return text[start : end + 1]
-    # Try array
-    start = text.find("[")
-    end = text.rfind("]")
-    if start != -1 and end != -1 and end > start:
-        return text[start : end + 1]
-    return text

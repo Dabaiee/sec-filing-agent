@@ -130,7 +130,6 @@ This means financial numbers in our reports are **never hallucinated** — they 
 | Sector comparison | Yes | No | No | No |
 | Filing diff / compare | Yes | No | No | No |
 | pip install | Yes | No | No | Yes |
-| Local model support (Ollama) | Yes | No | No | No |
 
 ---
 

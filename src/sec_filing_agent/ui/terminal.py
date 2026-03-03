@@ -90,31 +90,22 @@ class PipelineUI:
                 table.add_column("YoY")
 
             rows: list[tuple[str, ...]] = []
+            has_yoy = bool(fh.yoy_revenue_change)
             if fh.revenue:
-                row = ("Revenue", fh.revenue)
-                if fh.yoy_revenue_change:
-                    row = row + (fh.yoy_revenue_change,)
-                rows.append(row)
+                r: tuple[str, ...] = ("Revenue", fh.revenue, fh.yoy_revenue_change or "") if has_yoy else ("Revenue", fh.revenue)
+                rows.append(r)
             if fh.net_income:
-                row = ("Net Income", fh.net_income)
-                if fh.yoy_revenue_change:
-                    row = row + ("",)
-                rows.append(row)
+                r = ("Net Income", fh.net_income, "") if has_yoy else ("Net Income", fh.net_income)
+                rows.append(r)
             if fh.gross_margin:
-                row = ("Gross Margin", fh.gross_margin)
-                if fh.yoy_revenue_change:
-                    row = row + ("",)
-                rows.append(row)
+                r = ("Gross Margin", fh.gross_margin, "") if has_yoy else ("Gross Margin", fh.gross_margin)
+                rows.append(r)
             if fh.operating_margin:
-                row = ("Operating Margin", fh.operating_margin)
-                if fh.yoy_revenue_change:
-                    row = row + ("",)
-                rows.append(row)
+                r = ("Operating Margin", fh.operating_margin, "") if has_yoy else ("Operating Margin", fh.operating_margin)
+                rows.append(r)
             for key, val in fh.key_metrics.items():
-                row = (key, val)
-                if fh.yoy_revenue_change:
-                    row = row + ("",)
-                rows.append(row)
+                r = (key, val, "") if has_yoy else (key, val)
+                rows.append(r)
 
             for r in rows:
                 table.add_row(*r)

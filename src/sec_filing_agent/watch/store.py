@@ -6,6 +6,7 @@ import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 DEFAULT_DB_PATH = Path.home() / ".sec-agent" / "watchlist.db"
 
@@ -75,14 +76,14 @@ class WatchStore:
         self._conn.commit()
         return cursor.rowcount > 0
 
-    def list_tickers(self) -> list[dict]:
+    def list_tickers(self) -> list[dict[str, Any]]:
         """List all tickers in the watchlist with their metadata."""
         cursor = self._conn.execute(
             "SELECT ticker, added_at, last_checked, last_filing_date FROM watchlist ORDER BY ticker"
         )
         return [dict(row) for row in cursor.fetchall()]
 
-    def get_ticker_info(self, ticker: str) -> dict | None:
+    def get_ticker_info(self, ticker: str) -> dict[str, Any] | None:
         """Get watchlist info for a single ticker."""
         cursor = self._conn.execute(
             "SELECT * FROM watchlist WHERE ticker = ?", (ticker.upper(),)
@@ -120,7 +121,7 @@ class WatchStore:
         except sqlite3.IntegrityError:
             pass  # Already analyzed this filing
 
-    def get_latest_analysis(self, ticker: str, filing_type: str | None = None) -> dict | None:
+    def get_latest_analysis(self, ticker: str, filing_type: str | None = None) -> dict[str, Any] | None:
         """Get the most recent analysis for a ticker."""
         if filing_type:
             cursor = self._conn.execute(
@@ -139,7 +140,7 @@ class WatchStore:
             return result
         return None
 
-    def get_analyses(self, ticker: str, limit: int = 10) -> list[dict]:
+    def get_analyses(self, ticker: str, limit: int = 10) -> list[dict[str, Any]]:
         """Get recent analyses for a ticker."""
         cursor = self._conn.execute(
             "SELECT * FROM analyses WHERE ticker = ? ORDER BY filing_date DESC LIMIT ?",

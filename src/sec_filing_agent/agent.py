@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 from dataclasses import dataclass
-from typing import AsyncIterator
+from typing import Any, AsyncIterator
 
 from sec_filing_agent.models.analysis import AnalysisReport, ModelUsage
 from sec_filing_agent.models.config import Settings
@@ -194,7 +194,7 @@ class Agent:
         filing_type: str = "10-K",
         from_period: str = "",
         to_period: str = "",
-    ):
+    ) -> Any:
         """Compare a company's filings across time periods.
 
         Args:
@@ -220,7 +220,7 @@ class Agent:
         ticker_a: str,
         ticker_b: str,
         filing_type: str = "10-K",
-    ):
+    ) -> Any:
         """Compare filings of two different companies.
 
         Args:

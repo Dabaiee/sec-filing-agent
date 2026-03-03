@@ -1,7 +1,14 @@
 """SEC Filing Intelligence Agent — AI-powered SEC filing analysis."""
 
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from sec_filing_agent.models.analysis import AnalysisReport
 from sec_filing_agent.models.filing import RawFiling
+
+if TYPE_CHECKING:
+    from sec_filing_agent.agent import Agent as AgentClass
 
 __all__ = [
     "Agent",
@@ -13,7 +20,7 @@ __all__ = [
 __version__ = "0.3.0"
 
 
-def Agent(model: str | None = None, api_key: str | None = None):
+def Agent(model: str | None = None, api_key: str | None = None) -> AgentClass:  # noqa: N802
     """Create an Agent instance for programmatic SEC filing analysis.
 
     Args:

@@ -149,7 +149,7 @@ async def get_company(ticker: str, settings: Settings | None = None) -> Company:
         raise FetcherError(f"Company not found for ticker '{ticker}': {e}") from e
 
 
-async def get_financials(ticker: str, settings: Settings | None = None) -> dict | None:
+async def get_financials(ticker: str, settings: Settings | None = None) -> dict[str, Any] | None:
     """Get structured XBRL financial statements for a ticker.
 
     Args:

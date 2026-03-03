@@ -10,7 +10,7 @@ from sec_filing_agent.models.analysis import FinancialHighlights
 logger = logging.getLogger(__name__)
 
 
-def extract_financial_highlights(financials: dict | None) -> FinancialHighlights | None:
+def extract_financial_highlights(financials: dict[str, Any] | None) -> FinancialHighlights | None:
     """Extract financial highlights from edgartools XBRL financial statements.
 
     Uses structured XBRL data — 100% accurate, no LLM hallucination possible.
