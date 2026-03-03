@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import time
-from datetime import date
 
 import streamlit as st
 
@@ -22,6 +21,9 @@ def run_async(coro):
         return loop.run_until_complete(coro)
     finally:
         loop.close()
+
+
+# ── Single Analysis helpers ──────────────────────────────────────────────────
 
 
 async def run_analysis(ticker: str, filing_type: str | None, progress_cb):
@@ -160,20 +162,27 @@ def render_report(report):
             st.markdown(f"- {stmt}")
 
     # Model Usage
+    _render_usage_footer(report.model_usage, report.pipeline_duration_ms)
+
+
+def _render_usage_footer(model_usage, pipeline_duration_ms: int | None = None):
+    """Render model usage metrics."""
     st.markdown("---")
     st.markdown("### Model Usage")
-    usage = report.model_usage
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Tokens", f"{usage.total_input_tokens + usage.total_output_tokens:,}")
+        st.metric("Total Tokens", f"{model_usage.total_input_tokens + model_usage.total_output_tokens:,}")
     with col2:
-        st.metric("Estimated Cost", f"${usage.estimated_cost_usd:.3f}")
+        st.metric("Estimated Cost", f"${model_usage.estimated_cost_usd:.3f}")
     with col3:
-        st.metric("Pipeline Duration", f"{report.pipeline_duration_ms:,}ms")
+        if pipeline_duration_ms is not None:
+            st.metric("Pipeline Duration", f"{pipeline_duration_ms:,}ms")
+        else:
+            st.metric("Stages", f"{len(model_usage.stages)}")
 
-    if usage.stages:
+    if model_usage.stages:
         with st.expander("Per-stage breakdown"):
-            for stage in usage.stages:
+            for stage in model_usage.stages:
                 model_short = stage.model.split("-")[1] if "-" in stage.model else stage.model
                 st.markdown(
                     f"- **{stage.stage}** [{model_short}]: "
@@ -192,12 +201,181 @@ def get_report_markdown(report) -> str:
     return render_markdown(report)
 
 
-# --- Main App ---
+# ── Trends helpers ───────────────────────────────────────────────────────────
+
+
+def render_trends_chart(report):
+    """Render trend report with charts using Streamlit."""
+    import pandas as pd
+
+    st.markdown(f"## {report.ticker} — {report.company_name}")
+    st.markdown(f"**{report.years}-Year Financial Trends**")
+
+    if not report.metrics:
+        st.warning("No XBRL financial data available for this company.")
+        return
+
+    for metric in report.metrics:
+        if not metric.data_points:
+            continue
+
+        st.markdown(f"### {metric.name} ({metric.unit})")
+
+        # Build chart data
+        chart_data = pd.DataFrame(
+            {"Year": [dp.year for dp in metric.data_points],
+             metric.name: [dp.value for dp in metric.data_points]}
+        ).set_index("Year")
+
+        st.bar_chart(chart_data)
+
+        # Show data table
+        table_data = pd.DataFrame(
+            {"Year": [dp.year for dp in metric.data_points],
+             "Value": [dp.formatted for dp in metric.data_points]}
+        )
+        st.dataframe(table_data, hide_index=True, use_container_width=True)
+
+        # CAGR and direction
+        if metric.cagr is not None:
+            direction_icon = {"up": "↑", "down": "↓", "flat": "→", "volatile": "↕"}.get(
+                metric.trend_direction, "→"
+            )
+            st.caption(f"{direction_icon} CAGR: {metric.cagr:+.1f}% | Trend: {metric.trend_direction}")
+
+    # Narrative
+    if report.narrative:
+        st.markdown("### AI Analysis")
+        st.info(report.narrative)
+
+    # Usage
+    if report.model_usage.stages:
+        _render_usage_footer(report.model_usage)
+
+
+# ── Sector helpers ───────────────────────────────────────────────────────────
+
+
+def render_sector_streamlit(report):
+    """Render sector report using Streamlit."""
+    import pandas as pd
+
+    st.markdown(f"## {report.ticker} — {report.company_name}")
+    st.markdown(f"**Sector:** {report.sector} | **Peers:** {len(report.peers)} companies")
+
+    if report.peers:
+        st.markdown("### Peer Comparison")
+        rows = []
+        for p in report.peers:
+            rows.append({
+                "Ticker": p.ticker,
+                "Company": p.company_name,
+                "Revenue": p.revenue or "—",
+                "Net Income": p.net_income or "—",
+                "Gross Margin": p.gross_margin or "—",
+                "Op. Margin": p.operating_margin or "—",
+            })
+        df = pd.DataFrame(rows)
+        st.dataframe(df, hide_index=True, use_container_width=True)
+
+    if report.narrative:
+        st.markdown("### Competitive Positioning")
+        st.info(report.narrative)
+
+    if report.model_usage.stages:
+        _render_usage_footer(report.model_usage)
+
+
+# ── Diff / Compare helpers ───────────────────────────────────────────────────
+
+
+def render_diff_streamlit(report):
+    """Render a diff report using Streamlit."""
+    st.markdown(f"## {report.ticker} — {report.company_name}")
+    st.markdown(f"**{report.filing_type}** | {report.from_date} → {report.to_date}")
+
+    st.markdown("### Summary")
+    st.info(report.diff.summary)
+
+    if report.diff.financial_changes:
+        st.markdown("### Financial Changes")
+        for fc in report.diff.financial_changes:
+            cols = st.columns([2, 2, 2, 1])
+            with cols[0]:
+                st.write(f"**{fc.metric}**")
+            with cols[1]:
+                st.write(fc.old_value or "—")
+            with cols[2]:
+                st.write(fc.new_value or "—")
+            with cols[3]:
+                st.write(fc.change or "—")
+
+    if report.diff.risk_changes:
+        st.markdown("### Risk Changes")
+        for rc in report.diff.risk_changes:
+            icon = {"added": "🆕", "removed": "❌", "changed": "🔄"}.get(rc.change_type, "•")
+            with st.expander(f"{icon} [{rc.change_type.upper()}] {rc.title}"):
+                st.write(rc.description)
+                if rc.old_severity and rc.new_severity:
+                    st.caption(f"Severity: {rc.old_severity} → {rc.new_severity}")
+
+    if report.diff.notable_changes:
+        st.markdown("### Other Notable Changes")
+        for nc in report.diff.notable_changes:
+            st.markdown(f"- {nc}")
+
+    st.caption(f"Tokens: {report.total_tokens:,} | Cost: ${report.estimated_cost_usd:.3f}")
+
+
+def render_comparison_streamlit(report):
+    """Render a company comparison report using Streamlit."""
+    st.markdown(f"## {report.ticker_a} vs {report.ticker_b}")
+    st.markdown(
+        f"**{report.company_a}** vs **{report.company_b}** | "
+        f"Filing type: {report.filing_type}"
+    )
+
+    st.markdown("### Summary")
+    st.info(report.comparison.summary)
+
+    if report.comparison.financial_comparison:
+        st.markdown("### Financial Comparison")
+        for fc in report.comparison.financial_comparison:
+            cols = st.columns([2, 2, 2, 1])
+            with cols[0]:
+                st.write(f"**{fc.metric}**")
+            with cols[1]:
+                st.write(fc.old_value or "—")
+            with cols[2]:
+                st.write(fc.new_value or "—")
+            with cols[3]:
+                st.write(fc.change or "—")
+
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.markdown(f"### {report.ticker_a} Strengths")
+        for s in report.comparison.strengths_a:
+            st.markdown(f"- {s}")
+    with col_b:
+        st.markdown(f"### {report.ticker_b} Strengths")
+        for s in report.comparison.strengths_b:
+            st.markdown(f"- {s}")
+
+    if report.comparison.risk_comparison:
+        st.markdown("### Risk Comparison")
+        for rc in report.comparison.risk_comparison:
+            st.markdown(f"- {rc}")
+
+    st.caption(f"Tokens: {report.total_tokens:,} | Cost: ${report.estimated_cost_usd:.3f}")
+
+
+# ── Main App ─────────────────────────────────────────────────────────────────
+
 
 st.title("📊 SEC Filing Intelligence Agent")
 st.markdown(
-    "AI-powered analysis of SEC filings. Get structured risk assessments, "
-    "financial highlights, and event summaries from 10-K, 10-Q, and 8-K filings."
+    "AI-powered analysis of SEC filings with hybrid XBRL + LLM approach. "
+    "Financial numbers from structured data. Qualitative analysis from AI."
 )
 
 # Sidebar
@@ -213,73 +391,205 @@ with st.sidebar:
         "Built with [sec-filing-agent](https://github.com/Dabaiee/sec-filing-agent)"
     )
 
-# Input row
-col_input, col_type, col_btn = st.columns([2, 2, 1])
-with col_input:
-    ticker = st.text_input(
-        "Ticker Symbol",
-        placeholder="AAPL",
-        max_chars=10,
-        label_visibility="collapsed",
-    ).strip().upper()
-with col_type:
-    filing_type = st.selectbox(
-        "Filing Type",
-        options=["Latest Available", "10-K", "10-Q", "8-K"],
-        label_visibility="collapsed",
+# Tabs
+tab_analyze, tab_diff, tab_trends, tab_sector = st.tabs(
+    ["Single Analysis", "Compare / Diff", "Trends", "Sector"]
+)
+
+# ── Tab: Single Analysis ─────────────────────────────────────────────────────
+
+with tab_analyze:
+    col_input, col_type, col_btn = st.columns([2, 2, 1])
+    with col_input:
+        ticker = st.text_input(
+            "Ticker Symbol",
+            placeholder="AAPL",
+            max_chars=10,
+            label_visibility="collapsed",
+            key="analyze_ticker",
+        ).strip().upper()
+    with col_type:
+        filing_type = st.selectbox(
+            "Filing Type",
+            options=["Latest Available", "10-K", "10-Q", "8-K"],
+            label_visibility="collapsed",
+            key="analyze_filing_type",
+        )
+    with col_btn:
+        analyze_btn = st.button("Analyze", type="primary", use_container_width=True, key="analyze_btn")
+
+    if analyze_btn and ticker:
+        selected_type = None if filing_type == "Latest Available" else filing_type
+
+        progress_container = st.container()
+        progress_items: list[tuple[str, str, str]] = []
+
+        def update_progress(stage_id: str, status: str, message: str) -> None:
+            progress_items.append((stage_id, status, message))
+
+        with st.spinner("Running analysis pipeline..."):
+            try:
+                report = run_async(run_analysis(ticker, selected_type, update_progress))
+            except Exception as e:
+                st.error(f"Analysis failed: {e}")
+                st.stop()
+
+        with progress_container:
+            st.markdown("#### Pipeline Progress")
+            for _stage_id, status, message in progress_items:
+                if status == "done":
+                    st.markdown(f"✅ {message}")
+                else:
+                    st.markdown(f"🔄 {message}")
+
+        render_report(report)
+
+        st.markdown("---")
+        dl_col1, dl_col2 = st.columns(2)
+        with dl_col1:
+            st.download_button(
+                "📥 Download JSON",
+                data=get_report_json(report),
+                file_name=f"{report.ticker}_{report.filing_type}_{report.filing_date}.json",
+                mime="application/json",
+                use_container_width=True,
+            )
+        with dl_col2:
+            st.download_button(
+                "📥 Download Markdown",
+                data=get_report_markdown(report),
+                file_name=f"{report.ticker}_{report.filing_type}_{report.filing_date}.md",
+                mime="text/markdown",
+                use_container_width=True,
+            )
+
+    elif analyze_btn and not ticker:
+        st.warning("Please enter a ticker symbol.")
+
+# ── Tab: Compare / Diff ──────────────────────────────────────────────────────
+
+with tab_diff:
+    diff_mode = st.radio(
+        "Mode",
+        options=["Time Diff (same company)", "Company Comparison"],
+        horizontal=True,
+        key="diff_mode",
     )
-with col_btn:
-    analyze_btn = st.button("Analyze", type="primary", use_container_width=True)
 
-# Analysis
-if analyze_btn and ticker:
-    selected_type = None if filing_type == "Latest Available" else filing_type
+    if diff_mode == "Time Diff (same company)":
+        st.markdown("Compare the same company's filings across two time periods.")
+        col1, col2 = st.columns(2)
+        with col1:
+            diff_ticker = st.text_input("Ticker", placeholder="AAPL", key="diff_ticker").strip().upper()
+            diff_filing_type = st.selectbox(
+                "Filing Type", options=["10-K", "10-Q", "8-K"], key="diff_filing_type"
+            )
+        with col2:
+            diff_from = st.text_input("From (year or date)", placeholder="2023", key="diff_from")
+            diff_to = st.text_input("To (year or date)", placeholder="2024", key="diff_to")
 
-    # Progress container
-    progress_container = st.container()
-    progress_items = []
+        diff_btn = st.button("Compare Periods", type="primary", key="diff_btn")
 
-    def update_progress(stage_id: str, status: str, message: str) -> None:
-        progress_items.append((stage_id, status, message))
+        if diff_btn and diff_ticker and diff_from and diff_to:
+            with st.spinner("Analyzing filing differences..."):
+                try:
+                    from sec_filing_agent.diff.analyzer import diff_filings
+                    report = run_async(diff_filings(
+                        ticker=diff_ticker,
+                        filing_type=diff_filing_type,
+                        from_hint=diff_from,
+                        to_hint=diff_to,
+                    ))
+                except Exception as e:
+                    st.error(f"Diff analysis failed: {e}")
+                    st.stop()
+            render_diff_streamlit(report)
+        elif diff_btn:
+            st.warning("Please fill in all fields.")
 
-    with st.spinner("Running analysis pipeline..."):
-        try:
-            report = run_async(run_analysis(ticker, selected_type, update_progress))
-        except Exception as e:
-            st.error(f"Analysis failed: {e}")
-            st.stop()
-
-    # Show pipeline progress
-    with progress_container:
-        st.markdown("#### Pipeline Progress")
-        for _stage_id, status, message in progress_items:
-            if status == "done":
-                st.markdown(f"✅ {message}")
-            else:
-                st.markdown(f"🔄 {message}")
-
-    # Render report
-    render_report(report)
-
-    # Download buttons
-    st.markdown("---")
-    dl_col1, dl_col2 = st.columns(2)
-    with dl_col1:
-        st.download_button(
-            "📥 Download JSON",
-            data=get_report_json(report),
-            file_name=f"{report.ticker}_{report.filing_type}_{report.filing_date}.json",
-            mime="application/json",
-            use_container_width=True,
+    else:
+        st.markdown("Compare the latest filings of two different companies.")
+        col1, col2 = st.columns(2)
+        with col1:
+            cmp_ticker_a = st.text_input("Ticker A", placeholder="AAPL", key="cmp_ticker_a").strip().upper()
+        with col2:
+            cmp_ticker_b = st.text_input("Ticker B", placeholder="MSFT", key="cmp_ticker_b").strip().upper()
+        cmp_filing_type = st.selectbox(
+            "Filing Type", options=["10-K", "10-Q", "8-K"], key="cmp_filing_type"
         )
-    with dl_col2:
-        st.download_button(
-            "📥 Download Markdown",
-            data=get_report_markdown(report),
-            file_name=f"{report.ticker}_{report.filing_type}_{report.filing_date}.md",
-            mime="text/markdown",
-            use_container_width=True,
-        )
+        cmp_btn = st.button("Compare Companies", type="primary", key="cmp_btn")
 
-elif analyze_btn and not ticker:
-    st.warning("Please enter a ticker symbol.")
+        if cmp_btn and cmp_ticker_a and cmp_ticker_b:
+            with st.spinner("Comparing companies..."):
+                try:
+                    from sec_filing_agent.diff.analyzer import compare_companies
+                    report = run_async(compare_companies(
+                        ticker_a=cmp_ticker_a,
+                        ticker_b=cmp_ticker_b,
+                        filing_type=cmp_filing_type,
+                    ))
+                except Exception as e:
+                    st.error(f"Comparison failed: {e}")
+                    st.stop()
+            render_comparison_streamlit(report)
+        elif cmp_btn:
+            st.warning("Please enter both ticker symbols.")
+
+# ── Tab: Trends ──────────────────────────────────────────────────────────────
+
+with tab_trends:
+    st.markdown("Multi-year financial trends using XBRL structured data.")
+    col1, col2, col3 = st.columns([3, 1, 1])
+    with col1:
+        trend_ticker = st.text_input(
+            "Ticker", placeholder="AAPL", key="trend_ticker"
+        ).strip().upper()
+    with col2:
+        trend_years = st.number_input("Years", min_value=2, max_value=10, value=5, key="trend_years")
+    with col3:
+        trend_btn = st.button("Analyze Trends", type="primary", use_container_width=True, key="trend_btn")
+
+    if trend_btn and trend_ticker:
+        with st.spinner("Fetching XBRL financial data..."):
+            try:
+                from sec_filing_agent.trends import analyze_trends
+                report = run_async(analyze_trends(ticker=trend_ticker, years=trend_years))
+            except Exception as e:
+                st.error(f"Trend analysis failed: {e}")
+                st.stop()
+        render_trends_chart(report)
+    elif trend_btn:
+        st.warning("Please enter a ticker symbol.")
+
+# ── Tab: Sector ──────────────────────────────────────────────────────────────
+
+with tab_sector:
+    st.markdown("Compare a company against its sector peers using XBRL data.")
+    col1, col2 = st.columns([3, 2])
+    with col1:
+        sector_ticker = st.text_input(
+            "Ticker", placeholder="AAPL", key="sector_ticker"
+        ).strip().upper()
+    with col2:
+        sector_peers_raw = st.text_input(
+            "Custom Peers (optional, comma-separated)",
+            placeholder="MSFT, GOOG, META",
+            key="sector_peers",
+        )
+    sector_btn = st.button("Analyze Sector", type="primary", key="sector_btn")
+
+    if sector_btn and sector_ticker:
+        peers = None
+        if sector_peers_raw.strip():
+            peers = [p.strip().upper() for p in sector_peers_raw.split(",") if p.strip()]
+
+        with st.spinner("Fetching sector data..."):
+            try:
+                from sec_filing_agent.sector import analyze_sector
+                report = run_async(analyze_sector(ticker=sector_ticker, peers=peers))
+            except Exception as e:
+                st.error(f"Sector analysis failed: {e}")
+                st.stop()
+        render_sector_streamlit(report)
+    elif sector_btn:
+        st.warning("Please enter a ticker symbol.")
