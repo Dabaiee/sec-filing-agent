@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import time
 
 import typer
@@ -19,6 +20,38 @@ app = typer.Typer(
 watch_app = typer.Typer(help="Watchlist — monitor tickers for new filings")
 app.add_typer(watch_app, name="watch")
 console = Console()
+
+# Ticker format: 1-5 uppercase letters (standard NYSE/NASDAQ)
+_TICKER_RE = re.compile(r"^[A-Za-z]{1,5}$")
+
+VALID_OUTPUT_FORMATS = ("terminal", "json", "markdown")
+VALID_FILING_TYPES = ("10-K", "10-Q", "8-K")
+
+
+def _validate_ticker(ticker: str) -> str:
+    """Validate and normalize a ticker symbol."""
+    ticker = ticker.strip().upper()
+    if not _TICKER_RE.match(ticker):
+        console.print(
+            f"[red]Invalid ticker symbol:[/red] '{ticker}'. "
+            f"Ticker must be 1-5 letters (e.g., AAPL, MSFT)."
+        )
+        raise typer.Exit(code=1)
+    return ticker
+
+
+def _validate_filing_type(filing_type: str | None) -> str | None:
+    """Validate filing type if provided."""
+    if filing_type is None:
+        return None
+    ft = filing_type.upper().strip()
+    if ft not in VALID_FILING_TYPES:
+        console.print(
+            f"[red]Invalid filing type:[/red] '{filing_type}'. "
+            f"Valid types: {', '.join(VALID_FILING_TYPES)}"
+        )
+        raise typer.Exit(code=1)
+    return ft
 
 
 async def run_pipeline(
@@ -153,7 +186,14 @@ def analyze(
         False, "--verbose", "-v", help="Show detailed pipeline logging"
     ),
 ) -> None:
-    """Analyze the latest SEC filing for a given ticker."""
+    """Analyze the latest SEC filing for a given ticker.
+
+    Examples:
+        sec-agent analyze AAPL
+        sec-agent analyze MSFT --filing-type 10-K --output json
+    """
+    ticker = _validate_ticker(ticker)
+    filing_type = _validate_filing_type(filing_type)
     asyncio.run(
         run_pipeline(
             ticker=ticker,
