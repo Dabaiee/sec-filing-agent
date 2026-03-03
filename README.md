@@ -269,11 +269,22 @@ The web app includes tabs for Single Analysis, Compare/Diff, Trends, and Sector.
 
 ### Model Routing
 
+The system uses different strategies depending on what the task requires:
+
 | Task Complexity | Model | Cost | Examples |
 |----------------|-------|------|----------|
-| High | Claude Sonnet | $3.00 / $15.00 per M tokens | Risk analysis, financial reasoning, event assessment |
+| None (structured) | XBRL via edgartools | Free | Financial numbers, margins, EPS, trends |
 | Low | Claude Haiku | $0.80 / $4.00 per M tokens | Classification, data extraction, summarization |
-| None | XBRL structured | Free | Financial numbers, margins, EPS, trends |
+| High | Claude Sonnet | $3.00 / $15.00 per M tokens | Risk analysis, financial reasoning, event assessment |
+
+This means a typical 10-K analysis costs ~$0.02 — structured data is free, and Haiku handles cheap tasks.
+
+### Reliability
+
+- **Retry with exponential backoff** for transient API errors (rate limits, server errors)
+- **Structured output validation** with Pydantic — retry with error context on parse failure
+- **Graceful XBRL fallback** — if XBRL data unavailable, falls back to LLM extraction
+- **Input validation** — ticker format, filing type, and output format validated before pipeline runs
 
 ---
 

@@ -1,4 +1,10 @@
-"""Filing type classification using heuristics with LLM fallback."""
+"""Filing type classification using heuristics — no LLM call needed.
+
+Architecture decision: classification uses regex heuristics, NOT the LLM.
+Filing types are deterministic metadata from EDGAR, so wasting an LLM call
+for classification would be wasteful. The heuristic validates EDGAR's
+reported type against the document content as a safety check.
+"""
 
 from __future__ import annotations
 
