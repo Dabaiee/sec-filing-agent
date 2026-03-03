@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, TypeVar
+from typing import TypeVar
 
 import anthropic
 from pydantic import BaseModel, ValidationError

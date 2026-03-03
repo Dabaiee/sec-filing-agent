@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
-from rich.text import Text
 
 from sec_filing_agent.models.analysis import AnalysisReport
 

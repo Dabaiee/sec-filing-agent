@@ -9,7 +9,6 @@ import pytest
 from sec_filing_agent.models.analysis import (
     AnalysisReport,
     FinancialHighlights,
-    KeyEvent,
     ModelUsage,
     RiskFactor,
     StageUsage,
