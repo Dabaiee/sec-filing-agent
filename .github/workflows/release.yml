@@ -13,22 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-
-      - name: Lint
-        run: ruff check src/ tests/
-
-      - name: Run tests
-        run: pytest tests/ -v
+      - uses: astral-sh/setup-uv@v4
+      - run: uv sync --python 3.12
+      - run: uv run ruff check src/ tests/
+      - run: uv run pytest tests/ -v
 
   publish:
     needs: test
@@ -38,20 +26,9 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install build tools
-        run: python -m pip install --upgrade pip build
-
-      - name: Build package
-        run: python -m build
-
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - uses: astral-sh/setup-uv@v4
+      - run: uv build
+      - uses: pypa/gh-action-pypi-publish@release/v1
 
   github-release:
     needs: publish
@@ -60,7 +37,6 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:

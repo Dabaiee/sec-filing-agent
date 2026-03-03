@@ -10,17 +10,19 @@ readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
-    { name = "Dabaiee" },
+    { name = "William Zhou", email = "ztstc126@gmail.com" },
 ]
-keywords = ["sec", "edgar", "filing", "analysis", "llm", "ai", "finance"]
+keywords = ["sec", "edgar", "finance", "llm", "ai", "10-k", "10-q", "8-k", "financial-analysis"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Financial and Insurance Industry",
+    "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Office/Business :: Financial",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
     "anthropic>=0.39.0",
