@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -60,7 +60,7 @@ class WatchStore:
         try:
             self._conn.execute(
                 "INSERT INTO watchlist (ticker, added_at) VALUES (?, ?)",
-                (ticker, datetime.utcnow().isoformat()),
+                (ticker, datetime.now(UTC).isoformat()),
             )
             self._conn.commit()
             return True
@@ -94,7 +94,7 @@ class WatchStore:
     def update_last_checked(self, ticker: str, filing_date: str | None = None, accession: str | None = None) -> None:
         """Update the last checked timestamp and optionally the last filing info."""
         ticker = ticker.upper()
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(UTC).isoformat()
         if filing_date and accession:
             self._conn.execute(
                 "UPDATE watchlist SET last_checked = ?, last_filing_date = ?, last_accession = ? WHERE ticker = ?",
@@ -115,7 +115,7 @@ class WatchStore:
             self._conn.execute(
                 "INSERT INTO analyses (ticker, filing_type, filing_date, accession_number, analyzed_at, report_json) "
                 "VALUES (?, ?, ?, ?, ?, ?)",
-                (ticker.upper(), filing_type, filing_date, accession, datetime.utcnow().isoformat(), report_json),
+                (ticker.upper(), filing_type, filing_date, accession, datetime.now(UTC).isoformat(), report_json),
             )
             self._conn.commit()
         except sqlite3.IntegrityError:
