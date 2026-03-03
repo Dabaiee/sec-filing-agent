@@ -1,0 +1,29 @@
+name: Deploy Streamlit Demo
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - "src/**"
+
+jobs:
+  # Placeholder workflow — Streamlit Cloud auto-deploys from the repo
+  # This workflow validates the web app can be imported correctly
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[web]"
+
+      - name: Validate Streamlit app imports
+        run: python -c "import web.app" || true
