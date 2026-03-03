@@ -51,6 +51,9 @@ sec-agent = "sec_filing_agent.cli:app"
 [project.urls]
 Homepage = "https://github.com/your-username/sec-filing-agent"
 Repository = "https://github.com/your-username/sec-filing-agent"
+Documentation = "https://github.com/your-username/sec-filing-agent#readme"
+Issues = "https://github.com/your-username/sec-filing-agent/issues"
+Changelog = "https://github.com/your-username/sec-filing-agent/blob/main/CHANGELOG.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/sec_filing_agent"]
