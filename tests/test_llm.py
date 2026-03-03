@@ -159,3 +159,48 @@ def test_all_extraction_tasks_are_low():
     low_tasks = ["filing_classification", "entity_extraction", "financial_extraction"]
     for task in low_tasks:
         assert TASK_COMPLEXITY[task] == TaskComplexity.LOW, f"{task} should be LOW"
+
+
+# ── Cost Tracking Tests ─────────────────────────────────────────────────────
+
+
+def test_cost_tracking_accumulates():
+    """Usage log accumulates across multiple stages."""
+    from sec_filing_agent.models.analysis import ModelUsage, StageUsage
+
+    settings = Settings(anthropic_api_key="test-key-123")
+    client = LLMClient(settings=settings)
+    # Simulate a multi-stage pipeline
+    stages = [
+        StageUsage(stage="risk_analysis", model=SONNET_MODEL, input_tokens=1500, output_tokens=500),
+        StageUsage(stage="financial_extraction", model=HAIKU_MODEL, input_tokens=800, output_tokens=200),
+        StageUsage(stage="summary", model=HAIKU_MODEL, input_tokens=600, output_tokens=300),
+    ]
+    for s in stages:
+        client._usage_log.append(s)
+
+    # Build ModelUsage from log
+    total_in = sum(s.input_tokens for s in client.usage_log)
+    total_out = sum(s.output_tokens for s in client.usage_log)
+    total_cost = sum(
+        ModelRouter.estimate_cost(s.model, s.input_tokens, s.output_tokens)
+        for s in client.usage_log
+    )
+    usage = ModelUsage(
+        stages=client.usage_log,
+        total_input_tokens=total_in,
+        total_output_tokens=total_out,
+        estimated_cost_usd=total_cost,
+    )
+    assert usage.total_input_tokens == 2900
+    assert usage.total_output_tokens == 1000
+    assert usage.estimated_cost_usd > 0
+    assert len(usage.stages) == 3
+
+
+def test_cost_estimate_mixed_models():
+    """Cost estimation correctly differentiates Sonnet vs Haiku pricing."""
+    # Sonnet costs more than Haiku for the same token count
+    sonnet_cost = ModelRouter.estimate_cost(SONNET_MODEL, 1000, 1000)
+    haiku_cost = ModelRouter.estimate_cost(HAIKU_MODEL, 1000, 1000)
+    assert sonnet_cost > haiku_cost

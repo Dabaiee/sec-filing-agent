@@ -1,4 +1,4 @@
-"""Tests for SEC EDGAR fetcher (edgartools-based)."""
+"""Tests for SEC EDGAR fetcher (edgartools-based), including cache behavior."""
 
 from __future__ import annotations
 
@@ -9,7 +9,10 @@ import pytest
 
 from sec_filing_agent.fetcher import (
     FetcherError,
+    _cache_get,
+    _cache_set,
     _filing_to_raw,
+    clear_cache,
     fetch_latest_filing,
 )
 
@@ -117,3 +120,44 @@ async def test_fetch_latest_filing_company_not_found(mock_identity, mock_company
 
     with pytest.raises(FetcherError, match="Company not found"):
         await fetch_latest_filing("ZZZZ")
+
+
+# ── TTL Cache Tests ─────────────────────────────────────────────────────────
+
+
+def test_cache_set_and_get():
+    """Cached values can be retrieved within TTL."""
+    cache: dict[str, tuple[object, float]] = {}
+    _cache_set(cache, "key1", "value1")
+    assert _cache_get(cache, "key1") == "value1"
+
+
+def test_cache_miss():
+    """Missing keys return None."""
+    cache: dict[str, tuple[object, float]] = {}
+    assert _cache_get(cache, "nonexistent") is None
+
+
+def test_cache_expired(monkeypatch):
+    """Expired entries return None and are evicted."""
+    import sec_filing_agent.fetcher as fetcher_mod
+
+    cache: dict[str, tuple[object, float]] = {}
+    _cache_set(cache, "key1", "value1")
+    # Artificially expire the entry by setting TTL to 0
+    original_ttl = fetcher_mod._CACHE_TTL_S
+    monkeypatch.setattr(fetcher_mod, "_CACHE_TTL_S", 0)
+    assert _cache_get(cache, "key1") is None
+    assert "key1" not in cache
+    monkeypatch.setattr(fetcher_mod, "_CACHE_TTL_S", original_ttl)
+
+
+def test_clear_cache():
+    """clear_cache empties all caches."""
+    import sec_filing_agent.fetcher as fetcher_mod
+
+    _cache_set(fetcher_mod._company_cache, "AAPL", MagicMock())
+    _cache_set(fetcher_mod._financials_cache, "AAPL", {"test": True})
+    clear_cache()
+    assert len(fetcher_mod._company_cache) == 0
+    assert len(fetcher_mod._financials_cache) == 0

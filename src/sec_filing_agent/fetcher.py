@@ -1,8 +1,13 @@
-"""SEC EDGAR data fetcher using edgartools library."""
+"""SEC EDGAR data fetcher using edgartools library.
+
+Includes a simple TTL cache for Company lookups and financial data
+to avoid redundant SEC API calls during batch operations.
+"""
 
 from __future__ import annotations
 
 import logging
+import time
 from datetime import date
 from typing import Any
 
@@ -14,6 +19,37 @@ from sec_filing_agent.models.filing import RawFiling
 logger = logging.getLogger(__name__)
 
 SUPPORTED_FORMS = ("10-K", "10-Q", "8-K")
+
+# ── TTL Cache ────────────────────────────────────────────────────────────────
+
+# Default cache TTL: 5 minutes (SEC filings don't change frequently)
+_CACHE_TTL_S = 300
+
+_company_cache: dict[str, tuple[Company, float]] = {}
+_financials_cache: dict[str, tuple[dict[str, Any] | None, float]] = {}
+
+
+def _cache_get(cache: dict[str, tuple[Any, float]], key: str) -> Any | None:
+    """Get a value from a TTL cache, returning None if expired or missing."""
+    entry = cache.get(key)
+    if entry is None:
+        return None
+    value, ts = entry
+    if time.monotonic() - ts > _CACHE_TTL_S:
+        del cache[key]
+        return None
+    return value
+
+
+def _cache_set(cache: dict[str, tuple[Any, float]], key: str, value: Any) -> None:
+    """Store a value in a TTL cache."""
+    cache[key] = (value, time.monotonic())
+
+
+def clear_cache() -> None:
+    """Clear all cached data. Useful for testing or long-running processes."""
+    _company_cache.clear()
+    _financials_cache.clear()
 
 
 class FetcherError(Exception):
@@ -135,6 +171,8 @@ async def fetch_filings(
 async def get_company(ticker: str, settings: Settings | None = None) -> Company:
     """Get an edgartools Company object for a ticker.
 
+    Uses a TTL cache to avoid redundant SEC API calls during batch operations.
+
     Args:
         ticker: Stock ticker symbol.
         settings: Optional settings override.
@@ -143,14 +181,23 @@ async def get_company(ticker: str, settings: Settings | None = None) -> Company:
         edgartools Company object.
     """
     _init_identity(settings)
+    key = ticker.upper()
+    cached = _cache_get(_company_cache, key)
+    if cached is not None:
+        logger.debug("Cache hit for company '%s'", key)
+        return cached
     try:
-        return Company(ticker)
+        company = Company(ticker)
     except Exception as e:
         raise FetcherError(f"Company not found for ticker '{ticker}': {e}") from e
+    _cache_set(_company_cache, key, company)
+    return company
 
 
 async def get_financials(ticker: str, settings: Settings | None = None) -> dict[str, Any] | None:
     """Get structured XBRL financial statements for a ticker.
+
+    Results are cached for the TTL duration to avoid redundant API calls.
 
     Args:
         ticker: Stock ticker symbol.
@@ -159,16 +206,24 @@ async def get_financials(ticker: str, settings: Settings | None = None) -> dict[
     Returns:
         Dict with income_statement, balance_sheet, cash_flow DataFrames, or None.
     """
+    key = ticker.upper()
+    cached: dict[str, Any] | None = _cache_get(_financials_cache, key)
+    if cached is not None:
+        logger.debug("Cache hit for financials '%s'", key)
+        return cached
     company = await get_company(ticker, settings)
     financials = company.get_financials()
     if financials is None:
+        _cache_set(_financials_cache, key, None)
         return None
-    return {
+    result: dict[str, Any] = {
         "income_statement": financials.income_statement,
         "balance_sheet": financials.balance_sheet,
         "cash_flow": financials.cash_flow_statement,
         "financials_obj": financials,
     }
+    _cache_set(_financials_cache, key, result)
+    return result
 
 
 async def get_facts(ticker: str, settings: Settings | None = None) -> Any:
